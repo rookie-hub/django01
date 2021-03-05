@@ -3,6 +3,7 @@ import pygame
 from django01.ship import Ship
 from django01.set import Set
 from django01.Bullet import Bullet
+from django01.alien import Alien
 
 class AlienInvasion:
     '''管理游戏资源和行为的类'''
@@ -30,6 +31,21 @@ class AlienInvasion:
         self.ship = Ship(self)
 
         self.bullets = pygame.sprite.Group() # 这个对象类似于列表，可以管理发射出去的子弹
+
+        self.aliens = pygame.sprite.Group() # 存储外星人的编组方法
+        self._create_fleet()
+
+    def _create_fleet(self):
+        '''创建外星人群'''
+        alien = Alien(self) # 生成一个外星人
+        alien_width = alien.rect.width
+        available_space_x = self.settings.screen_width - (2 * alien_width)
+        number_aliens_x = available_space_x // ( 2 * alien_width) # 返回不大于结果的一个最大的整数
+
+        # 创建第一行外星人
+        self.aliens.add(alien) # 将生成的外星人实例对象添加到列表中
+
+
 
     def run_game(self):
         '''开始游戏的循环'''
@@ -108,6 +124,8 @@ class AlienInvasion:
         # 绘制每一颗子弹的位置
         for bullet in self.bullets.sprites():
             bullet.draw_bullet()
+
+        self.aliens.draw(self.screen) # 绘制aliens列表中所有的外星人
 
         # 让最近绘制的屏幕可见
         pygame.display.flip()
