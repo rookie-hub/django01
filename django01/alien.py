@@ -19,3 +19,20 @@ class Alien(Sprite):
         # 存储外星人的精确水平位置
         self.x = float(self.rect.x)
 
+        # 外星人的设置
+        self.settings = ai_game.settings
+
+    def check_edges(self):
+        '''如果即将越界就返回True'''
+        screen_rect = self.screen.screen.get_rect()  # 获取屏幕的矩形
+        if self.rect.right >= screen_rect.right or self.rect.left <= 0:
+            return True
+
+    def update(self):
+        '''移动外星人'''
+
+        self.x += (self.settings.alien_speed * self.settings.fleet_direction) # 水平位置，右移是+1，左移是-1
+        self.rect.x = self.x
+
+
+

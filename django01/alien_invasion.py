@@ -36,15 +36,49 @@ class AlienInvasion:
         self._create_fleet()
 
     def _create_fleet(self):
-        '''创建外星人群'''
-        alien = Alien(self) # 生成一个外星人
-        alien_width = alien.rect.width
-        available_space_x = self.settings.screen_width - (2 * alien_width)
-        number_aliens_x = available_space_x // ( 2 * alien_width) # 返回不大于结果的一个最大的整数
+        '''创建一行外星人'''
+        alient = Alien(self) # 生成一个外星人并获取其数据来计算一行可以容纳多少个外星人
+        alien_width,alien_height = alient.rect.size # 外星人所占的宽度和高度,size属性包含一个元祖
+        available_space_x = self.settings.screen_width - (2 * alien_width) # 可用于放置外星人的水平宽度
+        number_aliens_x = available_space_x // ( 2 * alien_width) # 返回不大于结果的一个最大的整数 ， 可在水平宽度生成外星人的数量
 
-        # 创建第一行外星人
-        self.aliens.add(alien) # 将生成的外星人实例对象添加到列表中
+        # 可用的垂直宽度
+        ship_height = self.ship.rect.height # 飞船的高度
+        available_space_y = self.settings.screen_height - (3 * alien_height) - ship_height
+        # 可生成的外星人的行数
+        number_rows = available_space_y // (2 * alien_height)
 
+        # 创建外星人群
+        for row_number in range(number_rows):
+            for alient_number in range(number_aliens_x):
+                # 创建一个外星人并将其加入当前行
+                self._create_alien(alient_number,row_number) # 两个参数是用于计算外星人初始x,y坐标
+
+    def _create_alien(self,alient_number,row_number):
+        '''创建一个外星人并放在当前行'''
+        alien = Alien(self)
+        alien_width,alient_height = alien.rect.size # 单个外星人的宽度
+        alien.x = alien_width + 2 * alien_width * alient_number # 当前外星人的宽度起始坐标
+        alien.rect.x = alien.x # 将外星人的宽度坐标赋值给外星人矩形的宽度坐标
+        alien.rect.y = alien.rect.height + 2 * row_number * alien.rect.height
+        self.aliens.add(alien) # 将外星人添加到外星人列表
+
+
+        #self.aliens.add(alien) # 将生成的外星人实例对象添加到列表中
+
+    def _check_fleet_edges(self):
+        '''遍历外星人列表查看是否有外星人到达屏幕边缘'''
+        for alien in self.aliens.sprites():
+            if alien.check_edges():
+                self._chang_fleet_direction()
+
+
+    def _chang_fleet_direction(self):
+        '''将外星人下移并将移动方向更改,整个外星人的下移和更改'''
+        for alien in self.aliens.sprites():
+            alien.rect.y += self.settings.fleet_drop_speed # 向下移动
+        # 反方向移动
+        self.settings.fleet_direction *= -1
 
 
     def run_game(self):
@@ -56,11 +90,20 @@ class AlienInvasion:
             # 飞船的移动
             self.ship.update()
 
+            # 子弹的移动
             self._update_bullets()
 
+            # 外星人的位置更新，需要在子弹之后，判断子弹移动后是否击中了外星人
+            self._update_aliens()
 
             # 更新屏幕
             self._update_screen()
+
+    def _update_aliens(self):
+
+        '''更新列表中所有外星人的位置'''
+        self._check_fleet_edges()
+        self.aliens.update()
 
     def _update_bullets(self):
         # 更新子弹的位置
