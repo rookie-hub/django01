@@ -4,6 +4,8 @@ from django01.ship import Ship
 from django01.set import Set
 from django01.Bullet import Bullet
 from django01.alien import Alien
+from time import sleep
+from django01.game_stats import GameStats
 
 class AlienInvasion:
     '''管理游戏资源和行为的类'''
@@ -35,8 +37,40 @@ class AlienInvasion:
         self.aliens = pygame.sprite.Group() # 存储外星人的编组方法
         self._create_fleet()
 
+        # 用于存储游戏统计信息的实例
+        self.stats = GameStats(self)
+
+    def _check_alients_bottom(self):
+        '''检测是否有外星人到达底部'''
+        screen_rect = self.screen.get_rect() # 获取屏幕矩形
+        for alien in self.aliens.sprites():
+            if alien.rect.bottom >= screen_rect.bottom:
+                self._ship_hit()
+                break
+
+    def _ship_hit(self):
+        '''飞船被外星人撞击后，飞船数-1，清空子弹和外星人，重置飞船位置，重新生成一群外星人'''
+        if self.stats.ships_left > 0:
+            self.stats.ships_left -= 1 # 飞船数-1
+        else:
+            self.stats.game_active = False
+
+        # 清空子弹和外星人
+        self.aliens.empty()
+        self.bullets.empty()
+
+        # 重置飞船位置，重新生成一群外星人
+        self._create_fleet()
+        self.ship.ship_center()
+
+        # 暂停
+        sleep(0.5)
+
+
+
+
     def _create_fleet(self):
-        '''创建一行外星人'''
+        '''创建一群外星人'''
         alient = Alien(self) # 生成一个外星人并获取其数据来计算一行可以容纳多少个外星人
         alien_width,alien_height = alient.rect.size # 外星人所占的宽度和高度,size属性包含一个元祖
         available_space_x = self.settings.screen_width - (2 * alien_width) # 可用于放置外星人的水平宽度
@@ -71,6 +105,7 @@ class AlienInvasion:
         for alien in self.aliens.sprites():
             if alien.check_edges():
                 self._chang_fleet_direction()
+                break
 
 
     def _chang_fleet_direction(self):
@@ -86,15 +121,17 @@ class AlienInvasion:
         while 1:
             # 监视键盘和鼠标事件
             self._check_events()
+            if self.stats.game_active:
+                # 飞船的移动
+                self.ship.update()
 
-            # 飞船的移动
-            self.ship.update()
+                # 子弹的移动
+                self._update_bullets()
 
-            # 子弹的移动
-            self._update_bullets()
-
-            # 外星人的位置更新，需要在子弹之后，判断子弹移动后是否击中了外星人
-            self._update_aliens()
+                # 外星人的位置更新，需要在子弹之后，判断子弹移动后是否击中了外星人
+                self._update_aliens()
+            # else:
+            #     sys.exit()
 
             # 更新屏幕
             self._update_screen()
@@ -105,6 +142,12 @@ class AlienInvasion:
         self._check_fleet_edges()
         self.aliens.update()
 
+        if pygame.sprite.spritecollideany(self.ship,self.aliens):
+            self._ship_hit()
+
+        self._check_alients_bottom()
+
+
     def _update_bullets(self):
         # 更新子弹的位置
         # 为bullets列表中每一个子弹调用Bullet类的update方法来更新子弹的y值
@@ -114,6 +157,26 @@ class AlienInvasion:
             if bullet.y <= 0:
                 self.bullets.remove(bullet)
         # print(len(self.bullets))
+        # 检查子弹是否和外星人的rect发生了碰撞
+        self._check_bullet_alient_collision()
+
+
+
+    def _check_bullet_alient_collision(self):
+        '''响应子弹和外星人碰撞'''
+        # 删除发生碰撞的子弹和外星人
+        collisions = pygame.sprite.groupcollide(self.bullets, self.aliens, False, True)
+        # pygame中sprite.groupcollide可以检测两个列表的rect是否发生了碰撞
+        # 参数1 发生碰撞的列表1
+        # 参数2 发生碰撞的列表2
+        # 参数3 为True，那么发生碰撞时删除当前列表1中的当前发生碰撞的子弹，为False那么子弹击中外星人后子弹不会消失
+        # 参数4 为True，那么发生碰撞时删除当前列表2中的当前发生碰撞的外星人
+        if not self.aliens:
+            # 如果外星人消灭完了，就消除子弹并重新创建一群外星人
+            self.bullets.empty()  # 清空子弹列表
+            self._create_fleet()
+
+
 
     def _check_events(self):
         # 响应键盘和鼠标事件
